@@ -113,7 +113,7 @@ export default function ReservationList({ role, view = 'reservations' }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow={isFarmer ? 'Farmer workspace' : 'Buyer marketplace'} title={title} description={description} colored actions={<Link className="btn btn-secondary" to={isFarmer ? '/farmer/harvest' : '/marketplace'}>{isFarmer ? 'My Produce' : 'Find a harvest'}<ArrowUpRight size={16} aria-hidden="true" /></Link>} />
+      <PageHeader eyebrow={isFarmer ? 'Farmer workspace' : 'Buyer marketplace'} title={title} description={description} actions={<Link className="btn btn-secondary" to={isFarmer ? '/farmer/harvest' : '/marketplace'}>{isFarmer ? 'My Produce' : 'Find a harvest'}<ArrowUpRight size={16} aria-hidden="true" /></Link>} />
       <StatStrip items={view === 'purchases' ? [
         { label: 'Completed purchases', value: completed.length, detail: 'Handover recorded by the farmer' },
         { label: 'Agreed order value', value: money(completed.reduce((total, item) => total + (Number(item.total_amount) || 0), 0)), detail: 'Not a payment confirmation' },
@@ -122,7 +122,7 @@ export default function ReservationList({ role, view = 'reservations' }) {
         { label: view === 'sales' ? 'Preparing' : 'Pending requests', value: scoped.filter((item) => item.status === (view === 'sales' ? 'confirmed' : 'pending')).length, detail: view === 'sales' ? 'Confirmed and awaiting preparation' : 'Awaiting farmer confirmation' },
         { label: 'Ready for handover', value: scoped.filter((item) => item.status === 'ready').length, detail: 'A Harvest Pass code is required' },
         { label: 'Completed', value: completed.length, detail: 'Handover recorded, payment separate' },
-      ]} colored />
+      ]} />
       {success && !selected && <Notice tone="success">{success}</Notice>}
       {error && !action && !selected && <Notice tone="error">{error}</Notice>}
       {selectedId && !selected && !action && <Notice tone="error">This reservation is not available to your account. <button type="button" className="underline" onClick={closeReservation}>Dismiss link</button></Notice>}

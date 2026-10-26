@@ -31,6 +31,8 @@ const BuyerReservations = lazy(() => import('./pages/buyer/BuyerReservations'));
 const BuyerPurchases = lazy(() => import('./pages/buyer/BuyerPurchases'));
 const BuyerNotifications = lazy(() => import('./pages/buyer/BuyerNotifications'));
 const BuyerProfile = lazy(() => import('./pages/buyer/BuyerProfile'));
+const ShoppingCart = lazy(() => import('./pages/buyer/ShoppingCart'));
+const Checkout = lazy(() => import('./pages/buyer/Checkout'));
 
 // Admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -76,6 +78,10 @@ function App() {
           </Route>
 
           {/* Buyer routes */}
+          <Route element={<BuyerLayout />}>
+            <Route path="/cart" element={<ShoppingCart />} />
+            <Route path="/checkout" element={<Checkout />} />
+          </Route>
           <Route path="/buyer" element={<BuyerLayout />}>
             <Route index element={<Navigate to="/marketplace" replace />} />
             <Route path="reservations" element={<BuyerReservations />} />

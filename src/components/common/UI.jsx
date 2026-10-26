@@ -1,35 +1,26 @@
 import { useEffect, useId, useRef } from 'react';
-import { AlertCircle, CheckCircle2, Clock3, Inbox, Info, PackageCheck, Sprout, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Inbox, Info, X } from 'lucide-react';
 
 export function PageHeader({ eyebrow, title, description, actions }) {
-  return <header className="page-header">
-    <div className="min-w-0 flex-1 basis-72">{eyebrow && <p className="eyebrow mb-2.5">{eyebrow}</p>}<h1>{title}</h1>{description && <p className="page-header-description mt-2.5">{description}</p>}</div>
-    {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+  return <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="min-w-0">{eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}<h1 className="text-2xl sm:text-3xl">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-black/60">{description}</p>}</div>
+    {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
   </header>;
 }
 
 export function StatStrip({ items }) {
-  const tones = ['yellow', 'green', 'mint', 'neutral'];
-  const icons = [Clock3, PackageCheck, CheckCircle2, Sprout];
-  return <dl className={`stat-grid mb-6 grid grid-cols-1 gap-3.5 sm:grid-cols-2 ${items.length === 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`}>
-    {items.map((item, index) => {
-      const Icon = item.icon || icons[index % icons.length];
-      return <div key={item.label} className={`stat-card stat-card-${item.tone || tones[index % tones.length]}`}>
-        <dt className="flex items-center justify-between gap-3 text-xs font-semibold text-green-900"><span>{item.label}</span><span className="stat-icon"><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span></dt>
-        <dd className="stat-value mt-2 break-words">{item.value}</dd>
-        {item.detail && <dd className="stat-detail mt-2 text-[11px] leading-relaxed text-[#536149]">{item.detail}</dd>}
-      </div>;
-    })}
+  return <dl className={`panel mb-7 grid grid-cols-2 divide-x divide-black/10 ${items.length === 3 ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`}>
+    {items.map((item) => <div key={item.label} className="min-w-0 p-4 sm:p-5"><dt className="text-sm text-black/60">{item.label}</dt><dd className="mt-1.5 break-words text-2xl font-semibold tracking-tight">{item.value}</dd>{item.detail && <p className="mt-1 text-xs leading-relaxed text-black/55">{item.detail}</p>}</div>)}
   </dl>;
 }
 
 export function Notice({ tone = 'info', children }) {
-  const Icon = ['error', 'warning'].includes(tone) ? AlertCircle : tone === 'success' ? CheckCircle2 : Info;
-  return <div role={tone === 'error' ? 'alert' : 'status'} className={`notice ${['error', 'success', 'warning'].includes(tone) ? `notice-${tone}` : ''}`}><Icon size={18} className="mt-0.5 shrink-0" aria-hidden="true" /><div className="min-w-0">{children}</div></div>;
+  const Icon = tone === 'error' ? AlertCircle : tone === 'success' ? CheckCircle2 : Info;
+  return <div role={tone === 'error' ? 'alert' : 'status'} className={`notice ${tone === 'error' ? 'notice-error' : tone === 'success' ? 'notice-success' : ''}`}><Icon size={18} className="mt-0.5 shrink-0" aria-hidden="true" /><div className="min-w-0">{children}</div></div>;
 }
 
 export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
-  return <div className="empty-state flex flex-col items-center"><span className="empty-state-icon"><Icon size={28} strokeWidth={1.6} aria-hidden="true" /></span><h2 className="text-lg text-green-900">{title}</h2>{description && <p className="mt-2 max-w-md text-sm text-[#596650]">{description}</p>}{action && <div className="mt-5">{action}</div>}</div>;
+  return <div className="panel flex flex-col items-center px-5 py-12 text-center"><Icon size={28} className="mb-4 text-black/45" aria-hidden="true" /><h2 className="text-lg">{title}</h2>{description && <p className="mt-2 max-w-md text-sm text-black/60">{description}</p>}{action && <div className="mt-5">{action}</div>}</div>;
 }
 
 const statusLabels = {
@@ -42,11 +33,9 @@ const statusLabels = {
 };
 
 export function StatusBadge({ status }) {
-  const positive = ['active', 'confirmed', 'ready', 'completed', 'verified', 'reserved', 'sold', 'handed_over', 'ready_for_pickup', 'ready_for_delivery', 'recorded_by_seller'].includes(status);
-  const attention = ['pending', 'expired', 'awaiting_confirmation', 'preparing', 'sell-now', 'sell-today'].includes(status);
-  const negative = ['cancelled', 'rejected', 'suspended', 'moderated', 'withdrawn'].includes(status);
-  const tone = negative ? 'red' : attention ? 'yellow' : positive ? 'green' : 'neutral';
-  return <span className={`status-badge status-${tone}`}><span className="status-dot" aria-hidden="true" />{statusLabels[status] || String(status || 'Not provided').replaceAll('_', ' ')}</span>;
+  const positive = ['active', 'confirmed', 'ready', 'completed', 'verified', 'handed_over', 'ready_for_pickup', 'ready_for_delivery'].includes(status);
+  const attention = ['pending', 'expired', 'cancelled', 'rejected', 'suspended', 'moderated', 'sell-now', 'sell-today'].includes(status);
+  return <span className={`inline-flex max-w-full items-center rounded-sm border px-2 py-1 text-xs font-medium leading-snug ${positive ? 'border-green/25 bg-green/8' : attention ? 'border-yellow/40 bg-yellow/15' : 'border-black/10 bg-black/3'}`}>{statusLabels[status] || String(status || 'Not provided').replaceAll('_', ' ')}</span>;
 }
 
 export function Modal({ title, onClose, children, wide = false }) {
@@ -65,11 +54,11 @@ export function Modal({ title, onClose, children, wide = false }) {
     const rect = event.currentTarget.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
   }}>
-    <div className="flex items-center justify-between gap-4 border-b border-sage-200 bg-sage-100 px-5 py-3"><h2 id={titleId} className="text-lg text-green-900">{title}</h2><button type="button" onClick={onClose} className="btn btn-quiet !p-2" aria-label="Close dialog"><X size={20} /></button></div>
+    <div className="flex items-center justify-between gap-4 border-b border-black/10 px-5 py-3"><h2 id={titleId} className="text-lg">{title}</h2><button type="button" onClick={onClose} className="btn btn-quiet !p-2" aria-label="Close dialog"><X size={20} /></button></div>
     <div className="p-5 sm:p-6">{children}</div>
   </dialog>;
 }
 
-export function ConfirmDialog({ title, description, confirmLabel = 'Confirm', onConfirm, onClose, busy = false, destructive = false }) {
-  return <Modal title={title} onClose={() => { if (!busy) onClose(); }}><div className="text-sm leading-relaxed text-black/70">{description}</div><div className="mt-6 flex flex-wrap justify-end gap-2"><button className="btn btn-secondary" type="button" disabled={busy} onClick={onClose}>Keep unchanged</button><button className={`btn ${destructive ? 'btn-danger' : 'btn-primary'}`} type="button" disabled={busy} onClick={onConfirm}>{busy ? 'Saving...' : confirmLabel}</button></div></Modal>;
+export function ConfirmDialog({ title, description, confirmLabel = 'Confirm', onConfirm, onClose, busy = false }) {
+  return <Modal title={title} onClose={() => { if (!busy) onClose(); }}><div className="text-sm leading-relaxed text-black/70">{description}</div><div className="mt-6 flex flex-wrap justify-end gap-2"><button className="btn btn-secondary" type="button" disabled={busy} onClick={onClose}>Keep unchanged</button><button className="btn btn-primary" type="button" disabled={busy} onClick={onConfirm}>{busy ? 'Saving...' : confirmLabel}</button></div></Modal>;
 }

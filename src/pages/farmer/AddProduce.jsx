@@ -7,7 +7,6 @@ import { CATEGORIES, UNITS, createListing, getListingById, relistListing, update
 import { dateTime, money, quantity, shortDate, urgencyLabel } from '../../utils/format';
 import { EmptyState, Notice, PageHeader } from '../../components/common/UI';
 import ProduceImage from '../../components/marketplace/ProduceImage';
-import { getCoordinates } from '../../utils/location';
 
 function localDateTime(value) {
   const date = new Date(value);
@@ -60,8 +59,6 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
     unit: listing?.unit || 'kg',
     price_per_unit: listing?.price_per_unit ?? '',
     pickup_location: listing?.pickup_location || user?.location || '',
-    pickup_latitude: listing?.pickup_latitude ?? '',
-    pickup_longitude: listing?.pickup_longitude ?? '',
     urgency: listing?.urgency || 'planned',
     selling_deadline: localDateTime(listing && !relisting ? listing.selling_deadline : Date.now() + 24 * 3600000),
     pickup_available: listing?.pickup_available ?? true,
@@ -136,10 +133,6 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
     if (!CATEGORIES.includes(values.category)) next.category = 'Choose a produce category.';
     if (!UNITS.includes(values.unit)) next.unit = 'Choose a supported unit.';
     if (!location || location.length > 200) next.pickup_location = 'Enter a general pickup location of up to 200 characters.';
-    if ([values.pickup_latitude, values.pickup_longitude].some((value) => String(value).trim() !== '') && !getCoordinates(values.pickup_latitude, values.pickup_longitude)) {
-      next.pickup_latitude = 'Use a latitude from -90 to 90.';
-      next.pickup_longitude = 'Use a longitude from -180 to 180. Both coordinates are needed.';
-    }
     if (values.condition_details.length > 1500) next.condition_details = 'Keep condition details within 1,500 characters.';
     for (const [field, label] of [['listed_quantity', 'Quantity'], ['price_per_unit', 'Price'], ...(values.delivery_available ? [['delivery_fee', 'Delivery cost']] : [])]) {
       const number = Number(values[field]);
@@ -160,12 +153,7 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
     setError('');
     if (Object.keys(next).length) {
       setError('Review the highlighted fields before continuing.');
-      requestAnimationFrame(() => {
-        const field = formRef.current?.querySelector('[aria-invalid="true"]');
-        const details = field?.closest('details');
-        if (details) details.open = true;
-        field?.focus();
-      });
+      requestAnimationFrame(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
       return;
     }
     busyRef.current = true;
@@ -191,13 +179,13 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Farmer workspace" title={title} description="Tell nearby buyers what is ready, what it costs, and how to collect it. All changes stay in this browser demo." colored actions={<Link className="btn btn-quiet" to="/farmer/harvest">Back to My Harvest</Link>} />
+      <PageHeader eyebrow="Farmer workspace" title={title} description="Tell nearby buyers what is ready, what it costs, and how to collect it. All changes stay in this browser demo." actions={<Link className="btn btn-quiet" to="/farmer/harvest">Back to My Harvest</Link>} />
       {error && <Notice tone="error">{error}</Notice>}
       {listing && <Notice>Existing reservations keep their agreed price, quantity, and collection details. Total listed stock includes {quantity(listing.reserved_quantity)} {listing.unit} reserved and {quantity(listing.sold_quantity)} {listing.unit} sold.{lockedDetails ? ' Produce name and pickup location are locked while reservations are open.' : ''}{lockedUnit ? ' The unit cannot change after a reservation or sale.' : ''}</Notice>}
       <form ref={formRef} onSubmit={submit} noValidate className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <fieldset disabled={busy} className="min-w-0 space-y-6">
           <legend className="sr-only">Produce listing details</legend>
-          <section className="panel p-5 sm:p-6 bg-section-soft" aria-labelledby="produce-details-heading">
+          <section className="panel p-5 sm:p-6" aria-labelledby="produce-details-heading">
             <h2 id="produce-details-heading" className="mb-5 text-lg font-semibold">01 / The harvest</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field name="produce_name" label="Produce name *" error={errors.produce_name}><input {...inputProps('produce_name')} className="input w-full" type="text" required maxLength={100} disabled={lockedDetails} placeholder="e.g. Fresh tomatoes" /></Field>
@@ -216,7 +204,7 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
             </div>
           </section>
 
-          <section className="panel p-5 sm:p-6 bg-section-yellow" aria-labelledby="quantity-heading">
+          <section className="panel p-5 sm:p-6" aria-labelledby="quantity-heading">
             <h2 id="quantity-heading" className="mb-5 text-lg font-semibold">02 / Quantity & price</h2>
             <div className="grid gap-5 sm:grid-cols-3">
               <Field name="listed_quantity" label="Total listed quantity *" error={errors.listed_quantity} hint={listing ? 'Includes stock already reserved and sold.' : 'Buyers can reserve part of this stock.'}><input {...inputProps('listed_quantity')} className="input w-full" type="number" inputMode="decimal" min="0.01" max="1000000" step="0.01" required placeholder="50" /></Field>
@@ -225,18 +213,10 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
             </div>
           </section>
 
-          <section className="panel p-5 sm:p-6 bg-section-mint" aria-labelledby="selling-heading">
+          <section className="panel p-5 sm:p-6" aria-labelledby="selling-heading">
             <h2 id="selling-heading" className="mb-5 text-lg font-semibold">03 / Timing & collection</h2>
             <div className="space-y-5">
               <Field name="pickup_location" label="General pickup location *" error={errors.pickup_location} hint="Use a barangay or public meeting point in Naga City. Avoid private or sensitive details."><input {...inputProps('pickup_location')} className="input w-full" type="text" required maxLength={200} disabled={lockedDetails} placeholder="e.g. Barangay Carolina, Naga City" /></Field>
-              <details className="rounded-lg border border-sage-200 bg-ivory-50 p-4">
-                <summary className="text-sm font-semibold text-green-900">Map pin (optional)</summary>
-                <p className="my-3 text-xs text-[#596650]">Add coordinates for a public pickup point to show a map on this product. Leave both blank if you are unsure.</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field name="pickup_latitude" label="Pickup latitude" error={errors.pickup_latitude}><input {...inputProps('pickup_latitude')} className="input" type="number" step="any" min="-90" max="90" disabled={lockedDetails} placeholder="e.g. 13.6217" /></Field>
-                  <Field name="pickup_longitude" label="Pickup longitude" error={errors.pickup_longitude}><input {...inputProps('pickup_longitude')} className="input" type="number" step="any" min="-180" max="180" disabled={lockedDetails} placeholder="e.g. 123.1942" /></Field>
-                </div>
-              </details>
               <fieldset><legend className="label">Selling urgency *</legend><div className="grid gap-3 sm:grid-cols-3">
                 {[['sell-now', 'Sell Now', 'Move this harvest quickly'], ['sell-today', 'Sell Today', 'Ready for today'], ['planned', 'Planned Surplus', 'Plan the next handover']].map(([value, label, detail]) => (
                   <label key={value} className={`flex min-h-20 cursor-pointer items-center gap-3 rounded-xl border p-3 ${values.urgency === value ? 'border-[#159600] bg-[#159600]/5' : 'border-black/15'}`}>
@@ -258,8 +238,8 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
           </div>
         </fieldset>
 
-        <aside className="panel overflow-hidden bg-section-soft xl:sticky xl:top-6" aria-label="Listing preview">
-          <div className="flex items-center justify-between border-b border-sage-200 bg-sage-200 px-5 py-4"><h2 className="font-semibold">Your listing preview</h2><span className="text-xs text-green-800">Live preview</span></div>
+        <aside className="panel overflow-hidden xl:sticky xl:top-6" aria-label="Listing preview">
+          <div className="flex items-center justify-between border-b border-black/10 px-5 py-4"><h2 className="font-semibold">Your listing preview</h2><span className="text-xs text-black/60">Live preview</span></div>
           <ProduceImage src={values.image_url} alt={values.produce_name || 'Produce photo preview'} className="aspect-[4/3] w-full object-cover" />
           <div className="space-y-4 p-5">
             <span className="inline-flex rounded-full bg-[#D0BE00]/15 px-3 py-1 text-xs font-semibold">{urgencyLabel(values.urgency)}</span>
@@ -268,7 +248,7 @@ function ProduceForm({ user, listing, relisting, activeReservations }) {
             <p className="flex items-start gap-2 text-sm text-black/60"><MapPin size={16} className="mt-0.5 shrink-0" aria-hidden="true" />{values.pickup_location || 'Your general collection point'}</p>
             {values.condition_details && <p className="break-words text-sm text-black/60">{values.condition_details}</p>}
             {values.harvest_date && <p className="text-xs text-black/60">Harvested {shortDate(values.harvest_date)}</p>}
-            <div className="space-y-2 border-t border-sage-200 pt-4 text-xs text-black/60"><p>Closes {dateTime(values.selling_deadline)}</p><p>{[values.pickup_available && 'Pickup', values.delivery_available && `Delivery (+${money(values.delivery_fee)})`].filter(Boolean).join(' / ') || 'Choose a collection option'}</p></div>
+            <div className="space-y-2 border-t border-black/10 pt-4 text-xs text-black/60"><p>Closes {dateTime(values.selling_deadline)}</p><p>{[values.pickup_available && 'Pickup', values.delivery_available && `Delivery (+${money(values.delivery_fee)})`].filter(Boolean).join(' / ') || 'Choose a collection option'}</p></div>
             <p className="text-xs text-black/60">Preview only. Nothing is published until you save.</p>
           </div>
         </aside>

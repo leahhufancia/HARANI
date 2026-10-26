@@ -29,11 +29,10 @@ export default function AdminDashboard() {
         eyebrow="Administration"
         title="A clearer view of the market."
         description="Review the queue, inspect listings and follow activity across the local demo."
-        colored
         actions={<Link to="/admin/reports" className="btn btn-secondary">Activity reports <ArrowUpRight size={16} aria-hidden="true" /></Link>}
       />
 
-      <StatStrip colored items={[
+      <StatStrip items={[
         { label: 'Registered accounts', value: data.profiles.length, detail: `${farmers} farmers / ${buyers} buyers` },
         { label: 'Available listings', value: availableListings.length, detail: 'Active stock from active sellers' },
         { label: 'Pending reviews', value: pendingReviews.length, detail: 'Demo profile submissions' },
@@ -42,8 +41,8 @@ export default function AdminDashboard() {
 
       <Notice>This is a frontend-only, client-local demo. Profile reviews do not verify real identities, and transaction values are not proof of payment.</Notice>
 
-      <section className="panel bg-section-soft" aria-labelledby="pending-reviews-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sage-200 p-4 sm:p-5">
+      <section className="panel" aria-labelledby="pending-reviews-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 p-4 sm:p-5">
           <div>
             <h2 id="pending-reviews-heading" className="text-base font-semibold">Pending profile reviews</h2>
             <p className="mt-1 text-xs text-black/60">Oldest submissions first. Showing {Math.min(pendingReviews.length, 5)} of {pendingReviews.length}.</p>
@@ -73,8 +72,8 @@ export default function AdminDashboard() {
         ) : <EmptyState icon={ClipboardCheck} title="The review queue is clear" description="New demo profile submissions will appear here." />}
       </section>
 
-      <section className="panel bg-section-yellow" aria-labelledby="recent-listings-heading">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sage-200 p-4 sm:p-5">
+      <section className="panel" aria-labelledby="recent-listings-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 p-4 sm:p-5">
           <div>
             <h2 id="recent-listings-heading" className="text-base font-semibold">Recent listings</h2>
             <p className="mt-1 text-xs text-black/60">Inspect produce details or open the moderation controls.</p>
@@ -103,7 +102,7 @@ export default function AdminDashboard() {
         ) : <EmptyState icon={Sprout} title="No listings yet" description="Farmer listings from the shared demo will appear here." />}
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sage-200 pt-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4 text-sm">
         <p className="text-black/60">{openReservations.length} open reservations across the demo.</p>
         <Link to="/admin/transactions" className="btn btn-secondary">Inspect reservations <ArrowUpRight size={15} aria-hidden="true" /></Link>
       </div>

@@ -5,6 +5,7 @@ import HaraniLogo from '../components/common/HaraniLogo';
 import { useAuth } from '../context/AuthContext';
 import { roleHome } from '../services/authService';
 import { Notice } from '../components/common/UI';
+import CartLink from '../components/cart/CartLink';
 
 const copyrightYear = new Date().getFullYear();
 
@@ -77,7 +78,7 @@ export default function PublicLayout() {
       <header className="border-b border-black/10 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link to="/" aria-label="Harani home" className="shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green">
-            <HaraniLogo className="w-52 sm:w-60" />
+            <HaraniLogo className="w-40 sm:w-60" />
           </Link>
 
           <nav aria-label="Main navigation" className="hidden items-center gap-6 lg:flex">
@@ -93,14 +94,17 @@ export default function PublicLayout() {
             ))}
           </nav>
 
-          <div className="hidden items-center gap-3 lg:flex">
-            <Link to="/login" className="btn btn-quiet">
-              {user ? 'Switch account' : 'Log In'}
-            </Link>
-            <Link to={user ? home : '/register'} className="btn btn-primary">
-              {user ? 'My workspace' : 'Get Started'}
-              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+          <div className="ml-auto flex items-center gap-2 lg:ml-0 lg:gap-3">
+            {userRole === 'buyer' && <CartLink />}
+            <div className="hidden items-center gap-3 lg:flex">
+              <Link to="/login" className="btn btn-quiet">
+                {user ? 'Switch account' : 'Log In'}
+              </Link>
+              <Link to={user ? home : '/register'} className="btn btn-primary">
+                {user ? 'My workspace' : 'Get Started'}
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
 
           <button

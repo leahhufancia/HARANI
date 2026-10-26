@@ -9,6 +9,7 @@ import { dateTime, money, quantity, shortDate } from '../../utils/format';
 import ProduceImage from '../../components/marketplace/ProduceImage';
 import { EmptyState, Modal, Notice, StatusBadge } from '../../components/common/UI';
 import ProduceMap from '../../components/map/ProduceMap';
+import AddToCart from '../../components/cart/AddToCart';
 
 export default function ProduceDetails() {
   const { productId } = useParams();
@@ -72,6 +73,7 @@ function ProduceContent({ productId }) {
           <fieldset><legend className="label">How will you receive it?</legend><div className="flex flex-wrap gap-3">{listing.pickup_available && <label className="flex min-h-11 items-center gap-2 rounded border border-black/20 px-3 text-sm"><input type="radio" name="fulfillment" value="pickup" checked={method === 'pickup'} onChange={() => setMethod('pickup')} />Pickup</label>}{listing.delivery_available && <label className="flex min-h-11 items-center gap-2 rounded border border-black/20 px-3 text-sm"><input type="radio" name="fulfillment" value="delivery" checked={method === 'delivery'} onChange={() => setMethod('delivery')} />Delivery (+{money(listing.delivery_fee)})</label>}</div></fieldset>
           <div><label htmlFor="fulfillment-notes" className="label">Arrangement notes <span className="font-normal text-black/60">(optional)</span></label><textarea id="fulfillment-notes" className="input" rows={2} maxLength={500} placeholder="Preferred pickup time or general delivery area. Do not share sensitive information." value={notes} onChange={(event) => setNotes(event.target.value)} /></div>
           <dl className="surface-sage rounded-lg border p-4 text-sm"><div className="flex justify-between gap-3"><dt>Produce subtotal</dt><dd>{money(subtotal)}</dd></div><div className="mt-2 flex justify-between gap-3"><dt>{method === 'delivery' ? 'Delivery cost' : 'Pickup cost'}</dt><dd>{money(costs)}</dd></div><div className="mt-3 flex justify-between gap-3 border-t border-black/10 pt-3 font-semibold"><dt>Reservation total</dt><dd className="text-lg">{money(subtotal + costs)}</dd></div></dl>
+          <AddToCart listing={listing} quantity={count} />
           {error && <Notice tone="error">{error}</Notice>}
           {user && user.role !== 'buyer' ? <Notice>{isOwner ? 'This is your listing. Manage its quantities and availability in My Harvest.' : 'To reserve this produce, switch to a buyer demo account.'}<Link className="mt-2 block font-semibold underline" to={isOwner ? '/farmer/harvest' : '/login'}>{isOwner ? 'Open My Harvest' : 'Switch demo account'}</Link></Notice> : <button type="submit" className="btn btn-primary w-full" disabled={busy || !available || !validQuantity}>{busy ? 'Saving reservation...' : user ? 'Reserve Produce' : 'Log In to Reserve Produce'}<ArrowRight /></button>}
           <p className="text-xs leading-relaxed text-black/55">Frontend demo only. No payment is collected. Pending reservations expire within 24 hours or at the selling deadline, whichever comes first. Personal travel costs are not included.</p>

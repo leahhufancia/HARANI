@@ -69,7 +69,7 @@ export default function LandingPage() {
           <figure className="overflow-hidden rounded-md border border-black/10 bg-black/5">
             <div className="relative">
               <ProduceImage
-                src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=85"
+                src="/assets/img.png"
                 alt="A colorful selection of fresh vegetables at a produce market"
                 eager
                 className="h-72 w-full object-cover sm:h-96 lg:h-[420px]"

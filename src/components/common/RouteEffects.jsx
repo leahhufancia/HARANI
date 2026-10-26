@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const titles = { '/': 'Local harvests, closer to you', '/login': 'Log In', '/register': 'Join Harani', '/forgot-password': 'Password Recovery', '/marketplace': 'Marketplace', '/onboarding': 'Your next step' };
+const titles = { '/': 'Local harvests, closer to you', '/login': 'Log In', '/register': 'Join Harani', '/forgot-password': 'Password Recovery', '/marketplace': 'Marketplace', '/cart': 'Shopping Cart', '/checkout': 'Checkout', '/onboarding': 'Your next step' };
 
 export default function RouteEffects() {
   const { pathname, hash } = useLocation();

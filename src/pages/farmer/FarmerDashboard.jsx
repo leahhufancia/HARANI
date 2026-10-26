@@ -39,7 +39,7 @@ export default function FarmerDashboard() {
       <PageHeader
         eyebrow="Farmer workspace"
         title={`Your harvest, ${user?.full_name?.split(' ')[0] || 'your way'}.`}
-        description="A little less surplus. A little more opportunity. Here is your local demo farm at a glance."
+        description="A little less surplus. A little more opportunity. Here is your farm at a glance."
         colored
         actions={<Link className="btn btn-primary" to="/farmer/add-produce"><Plus size={18} aria-hidden="true" /> Add Produce</Link>}
       />

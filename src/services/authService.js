@@ -1,6 +1,6 @@
 import { getSnapshot, mutateData, processTimeEvents } from './storageService.js';
 import { addAudit, addNotification, newId, requireProfile } from './dataRules.js';
-import { CATEGORIES } from './demoSeed.js';
+import { CATEGORIES } from './produceService.js';
 
 export const SESSION_KEY = 'harani.demo.session';
 const sessionListeners = new Set();

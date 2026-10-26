@@ -47,7 +47,6 @@ export default function MyHarvest() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Farmer workspace" title="My Produce" description="Make every harvest count. Keep your stock, selling windows, and reservations in view."
-        colored
         actions={<Link className="btn btn-primary" to="/farmer/add-produce"><Plus size={18} aria-hidden="true" /> Post Produce</Link>} />
       {success && <Notice tone="success">{success}</Notice>}
       {error && !selected && <Notice tone="error">{error}</Notice>}

@@ -1,18 +1,34 @@
 import { getSnapshot, mutateData } from './storageService.js';
-import { CATEGORIES } from './demoSeed.js';
 import { ACTIVE_STATUSES, addAudit, addNotification, inventory, newId, numberValue, requireProfile } from './dataRules.js';
 import { getCoordinates } from '../utils/location.js';
 
-export { CATEGORIES };
+export const CATEGORIES = [
+  'Leafy Greens',
+  'Root Vegetables',
+  'Fruits',
+  'Herbs',
+  'Legumes',
+  'Squash',
+  'Nightshades',
+  'Cruciferous',
+  'Alliums',
+  'Tubers',
+  'Gourds',
+  'Beans',
+  'Corn',
+  'Mushrooms',
+  'Other',
+];
+
 export const UNITS = ['kg', 'g', 'bundle', 'piece', 'crate'];
 
-export function getListings(data = getSnapshot()) {
+export function getListings(data = getSnapshot(), now = Date.now()) {
   return data.listings.map((listing) => {
     const stock = inventory(data, listing.id);
     let status = listing.status;
     if (status === 'active') {
       if (stock.sold_quantity >= listing.listed_quantity) status = 'sold';
-      else if (Date.parse(listing.selling_deadline) <= Date.now()) status = 'expired';
+      else if (Date.parse(listing.selling_deadline) <= now) status = 'expired';
       else if (stock.available_quantity <= 0) status = 'reserved';
     }
     return { ...listing, ...stock, status, farmer: data.profiles.find((profile) => profile.id === listing.farmer_id) };
@@ -20,6 +36,52 @@ export function getListings(data = getSnapshot()) {
 }
 
 export const getListingById = (data, id) => getListings(data).find((listing) => listing.id === id);
+
+function publicListingRecords(data, now, includeUnavailable = false) {
+  // Ignore elapsed holds without mutating storage or running notification maintenance.
+  // Malformed hold deadlines remain held, matching the conservative internal contract.
+  const reservations = data.reservations.filter((reservation) => !ACTIVE_STATUSES.includes(reservation.status) || !(Date.parse(reservation.expires_at) <= now));
+  return getListings({ ...data, reservations }, now).filter((listing) => {
+    const deadline = Date.parse(listing.selling_deadline);
+    const validFulfillment = typeof listing.pickup_available === 'boolean' && typeof listing.delivery_available === 'boolean'
+      && (listing.pickup_available || listing.delivery_available)
+      && (!listing.delivery_available || (Number.isFinite(listing.delivery_fee) && listing.delivery_fee >= 0));
+    return listing.farmer?.status === 'active' && listing.farmer.role === 'farmer'
+      && ['active', 'reserved', 'sold', 'expired'].includes(listing.status)
+      && Number.isFinite(deadline) && Number.isFinite(listing.available_quantity) && listing.available_quantity >= 0
+      && Number.isFinite(listing.price_per_unit) && listing.price_per_unit >= 0 && validFulfillment
+      && (includeUnavailable || (listing.status === 'active' && deadline > now && listing.available_quantity > 0));
+  }).map((listing) => {
+    const confirmed = listing.pickup_location_public === true;
+    const coordinates = confirmed ? getCoordinates(listing.pickup_latitude, listing.pickup_longitude) : null;
+    // Public reads must stay an explicit allowlist, never a listing/profile spread.
+    return {
+      id: listing.id, farmer_id: listing.farmer_id, produce_name: listing.produce_name,
+      category: listing.category, condition_details: listing.condition_details, harvest_date: listing.harvest_date,
+      unit: listing.unit, price_per_unit: listing.price_per_unit, available_quantity: listing.available_quantity,
+      urgency: listing.urgency, selling_deadline: listing.selling_deadline,
+      created_at: listing.created_at, updated_at: listing.updated_at, image_url: listing.image_url,
+      pickup_available: listing.pickup_available, delivery_available: listing.delivery_available,
+      delivery_fee: listing.delivery_available ? listing.delivery_fee : 0, status: listing.status,
+      pickup_location: confirmed && typeof listing.pickup_location === 'string' ? listing.pickup_location : '',
+      pickup_barangay: confirmed && typeof listing.pickup_barangay === 'string' ? listing.pickup_barangay : '',
+      pickup_latitude: coordinates?.[0] ?? null, pickup_longitude: coordinates?.[1] ?? null,
+      pickup_location_public: confirmed, location_is_demo: listing.location_is_demo === true,
+      farmer: {
+        id: listing.farmer.id, seller_name: listing.farmer.seller_name || 'Local farmer',
+        verification_status: listing.farmer.verification_status, status: 'active', role: 'farmer',
+      },
+    };
+  });
+}
+
+export function getPublicListings(data = getSnapshot(), now = Date.now()) {
+  return publicListingRecords(data, now);
+}
+
+export function getPublicListingById(data, id) {
+  return publicListingRecords(data, Date.now(), true).find((listing) => listing.id === id);
+}
 
 export function filterListings(listings, filters = {}) {
   const search = String(filters.search || '').trim().toLowerCase();
@@ -43,6 +105,11 @@ export function filterListings(listings, filters = {}) {
 function validateListing(values) {
   const produce_name = String(values.produce_name || '').trim();
   const pickup_location = String(values.pickup_location || '').trim();
+  if (values.pickup_barangay != null && typeof values.pickup_barangay !== 'string') throw new Error('Pickup barangay must be a string of up to 100 characters.');
+  const pickup_barangay = (values.pickup_barangay ?? '').trim();
+  if (pickup_barangay.length > 100) throw new Error('Pickup barangay must contain no more than 100 characters.');
+  if (values.pickup_location_public !== undefined && typeof values.pickup_location_public !== 'boolean') throw new Error('Public pickup location consent must be true or false.');
+  const pickup_location_public = values.pickup_location_public === true;
   const condition_details = String(values.condition_details || '').trim();
   if (produce_name.length < 2 || produce_name.length > 100) throw new Error('Produce name must contain 2 to 100 characters.');
   if (!CATEGORIES.includes(values.category)) throw new Error('Select a produce category.');
@@ -67,7 +134,7 @@ function validateListing(values) {
     throw new Error('Use a HTTPS image URL or a JPG, PNG, or WebP photo smaller than 1 MB.');
   }
   return {
-    produce_name, category: values.category, condition_details, pickup_location, harvest_date,
+    produce_name, category: values.category, condition_details, pickup_location, pickup_barangay, pickup_location_public, harvest_date,
     pickup_latitude: coordinates?.[0] ?? null, pickup_longitude: coordinates?.[1] ?? null,
     listed_quantity: numberValue(values.listed_quantity, 'Listed quantity', { positive: true }), unit: values.unit,
     price_per_unit: numberValue(values.price_per_unit, 'Selling price'), urgency: values.urgency,
@@ -80,7 +147,7 @@ export async function createListing(farmerId, values) {
   return mutateData((data) => {
     requireProfile(data, farmerId, 'farmer');
     const now = new Date().toISOString();
-    const listing = { ...validateListing(values), id: newId('produce'), farmer_id: farmerId, status: 'active', created_at: now, updated_at: now };
+    const listing = { ...validateListing(values), location_is_demo: false, id: newId('produce'), farmer_id: farmerId, status: 'active', created_at: now, updated_at: now };
     data.listings.unshift(listing);
     addAudit(data, farmerId, 'listing_created', 'listing', listing.id, `${listing.produce_name} published in the local demo.`);
     return listing;
@@ -94,12 +161,18 @@ function ownedListing(data, id, farmerId) {
   return listing;
 }
 
+function pickupChanged(listing, next) {
+  const coordinates = getCoordinates(listing.pickup_latitude, listing.pickup_longitude);
+  return next.pickup_location !== listing.pickup_location || next.pickup_barangay !== (listing.pickup_barangay ?? '')
+    || next.pickup_latitude !== (coordinates?.[0] ?? null) || next.pickup_longitude !== (coordinates?.[1] ?? null);
+}
+
 function checkInventoryChanges(data, listing, next) {
   const stock = inventory(data, listing.id);
   if (next.listed_quantity < stock.reserved_quantity + stock.sold_quantity) throw new Error('Listed quantity cannot be less than the quantity already reserved and sold.');
   if ((stock.reserved_quantity > 0 || stock.sold_quantity > 0) && next.unit !== listing.unit) throw new Error('The unit cannot change after produce has been reserved or sold. Create a new listing for a different unit.');
   const active = data.reservations.filter((reservation) => reservation.listing_id === listing.id && ACTIVE_STATUSES.includes(reservation.status));
-  if (active.length && (next.produce_name !== listing.produce_name || next.pickup_location !== listing.pickup_location || next.pickup_latitude !== (listing.pickup_latitude ?? null) || next.pickup_longitude !== (listing.pickup_longitude ?? null))) throw new Error('Keep the produce name and pickup location unchanged while reservations are open.');
+  if (active.length && (next.produce_name !== listing.produce_name || pickupChanged(listing, next) || next.pickup_location_public !== (listing.pickup_location_public === true))) throw new Error('Keep the produce name and pickup location unchanged while reservations are open.');
   if (active.some((reservation) => Date.parse(reservation.expires_at) > Date.parse(next.selling_deadline))) throw new Error('The deadline cannot be earlier than an existing reservation expiry.');
 }
 
@@ -110,7 +183,8 @@ export async function updateListing(id, farmerId, values) {
     if (!['active', 'reserved'].includes(current.status)) throw new Error('Only active listings can be edited. Use Relist for eligible expired or withdrawn produce.');
     const next = validateListing({ ...listing, ...values });
     checkInventoryChanges(data, listing, next);
-    Object.assign(listing, next, { updated_at: new Date().toISOString() });
+    const location_is_demo = listing.location_is_demo === true && !pickupChanged(listing, next);
+    Object.assign(listing, next, { location_is_demo, updated_at: new Date().toISOString() });
     addAudit(data, farmerId, 'listing_updated', 'listing', id, `${listing.produce_name} updated. Existing orders retain their agreed quantities and prices.`);
     const buyers = new Set(data.reservations.filter((item) => item.listing_id === id && ACTIVE_STATUSES.includes(item.status)).map((item) => item.buyer_id));
     buyers.forEach((buyerId) => {
@@ -140,7 +214,8 @@ export async function relistListing(id, farmerId, values) {
     const next = validateListing({ ...listing, ...values });
     checkInventoryChanges(data, listing, next);
     if (next.listed_quantity <= current.sold_quantity) throw new Error('Relisted produce needs an available quantity.');
-    Object.assign(listing, next, { status: 'active', updated_at: new Date().toISOString(), created_at: new Date().toISOString() });
+    const location_is_demo = listing.location_is_demo === true && !pickupChanged(listing, next);
+    Object.assign(listing, next, { location_is_demo, status: 'active', updated_at: new Date().toISOString(), created_at: new Date().toISOString() });
     addAudit(data, farmerId, 'listing_relisted', 'listing', id, `${listing.produce_name} relisted with a new selling deadline.`);
     return listing;
   });

@@ -1,10 +1,23 @@
-import { createDemoData } from './demoSeed.js';
 import { maintainData } from './dataRules.js';
 
 export const STORAGE_KEY = 'harani.demo.v1';
 let snapshot;
 let storageFailure = '';
 const listeners = new Set();
+
+function createEmptyData() {
+  return {
+    schemaVersion: 1,
+    revision: 0,
+    profiles: [],
+    listings: [],
+    reservations: [],
+    carts: [],
+    notifications: [],
+    verifications: [],
+    auditLogs: [],
+  };
+}
 
 function readSaved() {
   const stored = globalThis.localStorage?.getItem(STORAGE_KEY);
@@ -26,12 +39,12 @@ export function getSnapshot() {
   try {
     snapshot = readSaved();
     if (!snapshot) {
-      snapshot = createDemoData();
+      snapshot = createEmptyData();
       if (globalThis.localStorage) globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     }
   } catch {
     storageFailure = 'Browser storage is unavailable or the saved demo is unreadable. A temporary preview is shown; changes cannot be saved. Enable local storage or clear only the Harani demo data in your browser settings.';
-    snapshot = { ...createDemoData(), storage_warning: storageFailure };
+    snapshot = { ...createEmptyData(), storage_warning: storageFailure };
   }
   return snapshot;
 }

@@ -38,8 +38,8 @@ export default function LoginPage() {
       const intendedPath = typeof from === 'string'
         ? from
         : typeof from?.pathname === 'string' ? `${from.pathname}${from.search || ''}${from.hash || ''}` : '';
-      // A public produce link is only resumed by a buyer, never another role.
-      const destination = profile.role === 'buyer' && /^\/marketplace(?:\/|\?|#|$)/.test(intendedPath)
+      // Shopping links are only resumed by a buyer, never another role.
+      const destination = profile.role === 'buyer' && /^\/(?:marketplace|cart|checkout)(?:\/|\?|#|$)/.test(intendedPath)
         ? intendedPath
         : roleHome(profile.role);
       navigate(destination, { replace: true });

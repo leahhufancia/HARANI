@@ -1,11 +1,12 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { MapPin } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
 import markerRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
-import { getCoordinates } from '../../utils/location';
+import { distanceKm, getCoordinates } from '../../utils/location';
 
 const markerIcon = L.icon({
   iconRetinaUrl: markerRetinaUrl,
@@ -14,37 +15,43 @@ const markerIcon = L.icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
 });
 
-// Naga City, Camarines Sur coordinates
-const NAGA_CITY_COORDS = [13.6217, 123.1942];
-
-// Haversine formula for calculating distance between two coordinates
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, a))));
-  return R * c;
+function MapSize() {
+  const map = useMap();
+  useEffect(() => {
+    const resize = () => map.invalidateSize({ pan: false });
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+    observer?.observe(map.getContainer());
+    window.addEventListener('resize', resize);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', resize); };
+  }, [map]);
+  return null;
 }
 
-export default function ProduceMap({ pickupLocation, latitude, longitude, buyerLocation = null }) {
-  const coordinates = getCoordinates(latitude, longitude);
+export default function ProduceMap({ produceName = 'Produce', pickupLocation, pickupBarangay, latitude, longitude, publicPickup = false, buyerLocation = null, isDemo = false }) {
+  const coordinates = publicPickup === true ? getCoordinates(latitude, longitude) : null;
+  const publicLocation = publicPickup === true ? pickupLocation || pickupBarangay || '' : '';
   const buyerCoordinates = Array.isArray(buyerLocation) ? getCoordinates(buyerLocation[0], buyerLocation[1]) : null;
+  const [tileError, setTileError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [tileAttempt, setTileAttempt] = useState(0);
+  const coordinateKey = coordinates?.join(',') || '';
+  useEffect(() => {
+    if (!coordinateKey || !loading) return;
+    const timer = window.setTimeout(() => { setTileError(true); setLoading(false); }, 12000);
+    return () => window.clearTimeout(timer);
+  }, [coordinateKey, loading, tileAttempt]);
 
   if (!coordinates) {
     return (
       <div className="surface-sage rounded-xl border p-5">
-        <div className="flex items-start gap-3"><span className="section-icon"><MapPin size={20} aria-hidden="true" /></span><div><p className="text-sm font-semibold text-green-900">Exact map pin not provided</p><p className="mt-1 text-xs text-[#596650]">{pickupLocation || 'Ask the farmer for a general pickup location.'}</p></div></div>
-        <p className="mt-3 text-xs leading-relaxed text-[#596650]">Confirm the meeting point with the farmer before pickup. A map appears when valid pickup coordinates are provided.</p>
+        <div className="flex items-start gap-3"><span className="section-icon"><MapPin size={20} aria-hidden="true" /></span><div><p className="text-sm font-semibold text-green-900">{publicLocation ? 'Interactive map unavailable' : 'Pickup location not provided'}</p><p className="mt-1 text-xs text-[#596650]">{publicLocation || 'A public pickup point has not been published.'}</p></div></div>
+        <p className="mt-3 text-xs leading-relaxed text-[#596650]">The interactive map is unavailable until the farmer provides a confirmed public pickup pin. You can still add this produce to your cart or reserve it while it is available.</p>
       </div>
     );
   }
 
-  const origin = buyerCoordinates || NAGA_CITY_COORDS;
-  const distance = calculateDistance(origin[0], origin[1], coordinates[0], coordinates[1]);
-  const distanceLabel = `About ${distance.toFixed(1)} km ${buyerCoordinates ? 'from your location' : 'from central Naga City'} (straight-line distance)`;
+  const distance = distanceKm(buyerCoordinates, coordinates);
+  const distanceLabel = distance === null ? '' : `About ${distance.toFixed(1)} km from your location${isDemo ? ' to a sample pin' : ''} (straight-line distance)`;
 
   return (
     <div className="space-y-3">
@@ -54,20 +61,25 @@ export default function ProduceMap({ pickupLocation, latitude, longitude, buyerL
           <span className="font-medium">{distanceLabel}</span>
         </div>
       )}
-      <div className="relative z-0 h-64 overflow-hidden rounded-xl border border-sage-200" role="region" aria-label="Produce pickup map">
+      <div className="produce-pickup-map relative z-0 h-72 overflow-hidden rounded-lg border border-sage-200 sm:h-80" role="region" aria-label={`Pickup map for ${produceName}`}>
         <MapContainer
           key={coordinates.join(',')}
           center={coordinates}
-          zoom={14}
+          zoom={15}
+          minZoom={2}
+          maxZoom={19}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={false}
         >
           <TileLayer
+            key={tileAttempt}
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            eventHandlers={{ loading: () => setLoading(true), load: () => setLoading(false), tileerror: () => { setTileError(true); setLoading(false); } }}
           />
-          <Marker position={coordinates} icon={markerIcon} alt="Produce pickup location">
-            <Popup>{pickupLocation || 'Produce pickup location'}</Popup>
+          <MapSize />
+          <Marker key={produceName} position={coordinates} icon={markerIcon} alt={`Pickup for ${produceName}`} title={`Pickup for ${produceName}`}>
+            <Popup maxHeight={150}><strong>{produceName}</strong><p>{publicLocation || 'Confirmed public pickup point'}</p>{isDemo && <p>Sample pickup pin, not a verified farm location.</p>}</Popup>
           </Marker>
           {buyerCoordinates && (
             <Marker position={buyerCoordinates} icon={markerIcon} alt="Your location">
@@ -76,8 +88,10 @@ export default function ProduceMap({ pickupLocation, latitude, longitude, buyerL
           )}
         </MapContainer>
       </div>
+      {loading && !tileError && <p role="status" className="text-xs text-black/60">Loading pickup map...</p>}
+      {tileError && <p role="alert" className="text-xs text-black/65">Map tiles could not load. The saved pickup point and product details are still available. <button type="button" className="inline-flex min-h-11 items-center font-semibold underline" onClick={() => { setTileError(false); setLoading(true); setTileAttempt((attempt) => attempt + 1); }}>Retry map tiles</button></p>}
       <p className="text-xs text-[#596650]">
-        This pin was provided by the farmer. Confirm the exact meeting point before handover.
+        {isDemo ? 'This is a simulated pickup pin in the local demo, not a verified farmer location.' : 'This public pickup pin was provided by the farmer, not independently verified. Confirm the meeting point before handover.'}
       </p>
     </div>
   );
